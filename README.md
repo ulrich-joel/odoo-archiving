@@ -515,3 +515,6 @@ _comment_tree" model="ir.ui.view">
 ```
 
 Avec ces ajouts, vous pouvez étendre les fonctionnalités de votre module d'archivage dans Odoo 16. Ces exemples couvrent les principales fonctionnalités supplémentaires que vous avez demandées. Vous pouvez continuer à personnaliser et à étendre ces fonctionnalités en fonction de vos besoins spécifiques.
+
+https://chatgpt.com/share/a4ea3d06-0f73-4dcb-8349-c7db6ec34a2f
+https://chatgpt.com/share/1477a45b-7000-4d0a-a0c7-1b5ca9984de6
