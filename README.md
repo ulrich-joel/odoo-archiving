@@ -518,3 +518,543 @@ Avec ces ajouts, vous pouvez étendre les fonctionnalités de votre module d'arc
 
 https://chatgpt.com/share/a4ea3d06-0f73-4dcb-8349-c7db6ec34a2f
 https://chatgpt.com/share/1477a45b-7000-4d0a-a0c7-1b5ca9984de6
+
+Bonjour, pour ajouter les fonctionnalités de création d'une feuille de calcul et de partage à un module de gestion de documents existant, nous allons suivre ces étapes :
+
+1. **Créer une feuille de calcul** : Vous pouvez utiliser des bibliothèques JavaScript comme Spreadsheet.js ou intégrer Google Sheets.
+
+2. **Partage de documents** : Ajoutez des fonctionnalités pour générer un lien de partage et gérer les permissions.
+
+### Ajout d'une feuille de calcul
+
+#### Étape 1: Intégration de Spreadsheet.js
+
+1. **Ajoutez la bibliothèque Spreadsheet.js** : Téléchargez la bibliothèque et ajoutez-la à votre module Odoo.
+
+2. **Modifiez le fichier `__manifest__.py`** pour inclure les fichiers JavaScript et CSS nécessaires.
+
+```python
+{
+    'name': 'Document Management',
+    'version': '16.0.1.0.0',
+    'summary': 'Document Management with Spreadsheet',
+    'author': 'Your Name',
+    'category': 'Tools',
+    'depends': ['base'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/document_file_views.xml',
+        'views/templates.xml',
+    ],
+    'assets': {
+        'web.assets_backend': [
+            'your_module_name/static/src/js/spreadsheet.js',
+            'your_module_name/static/src/css/spreadsheet.css',
+        ],
+    },
+    'installable': True,
+    'application': True,
+}
+```
+
+#### Étape 2: Créer un modèle pour les feuilles de calcul
+
+Modifiez le fichier `models/document_file.py` pour ajouter un modèle pour les feuilles de calcul.
+
+```python
+from odoo import models, fields, api
+
+class DocumentFile(models.Model):
+    _name = 'document.file'
+    _description = 'Document File'
+
+    name = fields.Char(string='Document Name', required=True)
+    file_type = fields.Selection([
+        ('file', 'File'),
+        ('url', 'URL'),
+        ('spreadsheet', 'Spreadsheet')
+    ], string='File Type', required=True, default='file')
+    file = fields.Binary(string='File', attachment=True)
+    file_name = fields.Char(string='File Name')
+    url = fields.Char(string='URL')
+    spreadsheet_data = fields.Text(string='Spreadsheet Data')
+```
+
+#### Étape 3: Ajouter les vues nécessaires
+
+Ajoutez un bouton pour créer une nouvelle feuille de calcul et une vue pour afficher la feuille de calcul.
+
+```xml
+<!-- views/document_file_views.xml -->
+<odoo>
+    <record id="view_document_file_form" model="ir.ui.view">
+        <field name="name">document.file.form</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="file_type"/>
+                        <field name="file" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+                        <button name="create_spreadsheet" string="Create Spreadsheet" type="object" attrs="{'invisible': [('file_type', '!=', 'spreadsheet')]}"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_document_file_tree" model="ir.ui.view">
+        <field name="name">document.file.tree</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="file_type"/>
+                <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+            </tree>
+        </field>
+    </record>
+</odoo>
+```
+
+#### Étape 4: Ajouter des templates et du JavaScript
+
+Créez un fichier `views/templates.xml` pour ajouter le template de la feuille de calcul.
+
+```xml
+<!-- views/templates.xml -->
+<odoo>
+    <template id="assets_backend" name="document_management_assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/your_module_name/static/src/js/spreadsheet.js"></script>
+            <link rel="stylesheet" href="/your_module_name/static/src/css/spreadsheet.css"/>
+        </xpath>
+    </template>
+
+    <template id="spreadsheet_template" name="Spreadsheet Template">
+        <t t-call="web.basic_layout">
+            <div id="spreadsheet-container"></div>
+        </t>
+    </template>
+</odoo>
+```
+
+Créez le fichier JavaScript `static/src/js/spreadsheet.js` pour gérer la feuille de calcul.
+
+```javascript
+odoo.define('your_module_name.spreadsheet', function (require) {
+    "use strict";
+
+    var core = require('web.core');
+    var FormController = require('web.FormController');
+
+    FormController.include({
+        renderButtons: function ($node) {
+            this._super.apply(this, arguments);
+            if (this.modelName === 'document.file' && this.renderer.state.data.file_type === 'spreadsheet') {
+                this.$buttons.append('<button type="button" class="btn btn-primary" id="create_spreadsheet">Create Spreadsheet</button>');
+                this.$buttons.on('click', '#create_spreadsheet', this._onCreateSpreadsheet.bind(this));
+            }
+        },
+        _onCreateSpreadsheet: function () {
+            var spreadsheetContainer = document.getElementById('spreadsheet-container');
+            // Initialize the spreadsheet
+            var spreadsheet = new Spreadsheet(spreadsheetContainer);
+            // Save the spreadsheet data
+            var data = spreadsheet.toJSON();
+            this._rpc({
+                model: 'document.file',
+                method: 'write',
+                args: [[this.renderer.state.data.id], { spreadsheet_data: JSON.stringify(data) }],
+            });
+        },
+    });
+});
+```
+
+### Ajout de la fonctionnalité de partage
+
+#### Étape 1: Ajouter un champ pour le lien de partage
+
+Modifiez le fichier `models/document_file.py` pour ajouter un champ pour le lien de partage.
+
+```python
+class DocumentFile(models.Model):
+    _name = 'document.file'
+    _description = 'Document File'
+
+    name = fields.Char(string='Document Name', required=True)
+    file_type = fields.Selection([
+        ('file', 'File'),
+        ('url', 'URL'),
+        ('spreadsheet', 'Spreadsheet')
+    ], string='File Type', required=True, default='file')
+    file = fields.Binary(string='File', attachment=True)
+    file_name = fields.Char(string='File Name')
+    url = fields.Char(string='URL')
+    spreadsheet_data = fields.Text(string='Spreadsheet Data')
+    share_link = fields.Char(string='Share Link')
+
+    def generate_share_link(self):
+        # Code to generate a shareable link
+        self.share_link = 'https://your_domain.com/share/' + str(self.id)
+```
+
+#### Étape 2: Ajouter un bouton pour générer le lien de partage
+
+Modifiez `views/document_file_views.xml` pour ajouter le bouton de partage.
+
+```xml
+<odoo>
+    <record id="view_document_file_form" model="ir.ui.view">
+        <field name="name">document.file.form</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="file_type"/>
+                        <field name="file" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+                        <button name="generate_share_link" string="Generate Share Link" type="object" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="share_link" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
+```
+
+Avec ces modifications, vous aurez ajouté les fonctionnalités de création de feuilles de calcul et de partage de documents à votre module de gestion de documents dans Odoo. Assurez-vous de tester ces fonctionnalités pour vous assurer qu'elles fonctionnent correctement dans votre environnement.
+
+Pour ajouter une troisième section dans votre module Odoo pour afficher un visualiseur intégré de documents, nous devons modifier les vues pour inclure cette nouvelle section et ajuster le code pour afficher le document sélectionné.
+
+### Étape 1 : Modifier la vue principale pour inclure la troisième section
+
+Nous allons modifier le fichier XML pour ajouter une nouvelle colonne qui contiendra le visualiseur de documents.
+
+#### Modifications dans `views/document_file_views.xml`
+
+```xml
+<odoo>
+    <record id="view_document_file_tree" model="ir.ui.view">
+        <field name="name">document.file.tree</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name"/>
+                <field name="file_type"/>
+                <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_document_file_kanban" model="ir.ui.view">
+        <field name="name">document.file.kanban</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_global_click">
+                            <field name="name"/>
+                            <field name="file_type"/>
+                            <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                            <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+                            <a t-if="record.file.raw_value" t-att-href="'data:application/pdf;base64,' + record.file.raw_value" target="_blank">
+                                <img src="/web/image/document.file/${record.id}/file" class="img-fluid" t-att-title="record.file_name.value"/>
+                            </a>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_document_file_form" model="ir.ui.view">
+        <field name="name">document.file.form</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="file_type"/>
+                        <field name="file" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="file_name" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="url" attrs="{'invisible': [('file_type', '!=', 'url')]}"/>
+                        <button name="generate_share_link" string="Generate Share Link" type="object" attrs="{'invisible': [('file_type', '!=', 'file')]}"/>
+                        <field name="share_link" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_document_file_search" model="ir.ui.view">
+        <field name="name">document.file.search</field>
+        <field name="model">document.file</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="file_type"/>
+            </search>
+        </field>
+    </record>
+</odoo>
+```
+
+### Étape 2 : Ajouter du JavaScript pour gérer le visualiseur
+
+Nous allons ajouter un fichier JavaScript pour gérer l'affichage du document sélectionné dans le visualiseur.
+
+#### Création du fichier `static/src/js/document_viewer.js`
+
+```javascript
+odoo.define('your_module_name.document_viewer', function (require) {
+    "use strict";
+
+    var AbstractAction = require('web.AbstractAction');
+    var core = require('web.core');
+    var QWeb = core.qweb;
+
+    var DocumentViewer = AbstractAction.extend({
+        template: 'DocumentViewer',
+
+        start: function () {
+            this._super.apply(this, arguments);
+            this._updateDocumentViewer();
+        },
+
+        _updateDocumentViewer: function () {
+            var self = this;
+            this._rpc({
+                model: 'document.file',
+                method: 'search_read',
+                args: [[], ['file', 'file_name']],
+            }).then(function (result) {
+                if (result.length > 0) {
+                    var document = result[0];
+                    self.$el.html(QWeb.render('DocumentViewerTemplate', { document: document }));
+                }
+            });
+        },
+    });
+
+    core.action_registry.add('document_viewer', DocumentViewer);
+
+    return DocumentViewer;
+});
+```
+
+#### Ajouter le template pour le visualiseur
+
+Nous devons ajouter un template HTML pour le visualiseur dans `views/templates.xml`.
+
+```xml
+<odoo>
+    <template id="assets_backend" name="document_management_assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <script type="text/javascript" src="/your_module_name/static/src/js/document_viewer.js"></script>
+            <link rel="stylesheet" href="/your_module_name/static/src/css/document_viewer.css"/>
+        </xpath>
+    </template>
+
+    <template id="DocumentViewerTemplate" name="Document Viewer Template">
+        <div>
+            <h3 t-esc="document.file_name"/>
+            <iframe t-if="document.file" t-att-src="'data:application/pdf;base64,' + document.file" width="100%" height="600px"></iframe>
+        </div>
+    </template>
+</odoo>
+```
+
+### Étape 3 : Modifier le fichier CSS pour le visualiseur
+
+Ajoutez les styles nécessaires dans `static/src/css/document_viewer.css`.
+
+```css
+#document_viewer_container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+}
+
+#document_viewer_container h3 {
+    margin: 20px 0;
+}
+
+#document_viewer_container iframe {
+    border: none;
+}
+```
+
+### Étape 4 : Mettre à jour le `__manifest__.py`
+
+Mettez à jour le fichier `__manifest__.py` pour inclure les nouveaux fichiers JavaScript et CSS.
+
+```python
+{
+    'name': 'Document Management',
+    'version': '16.0.1.0.0',
+    'summary': 'Document Management with Integrated Viewer',
+    'author': 'Your Name',
+    'category': 'Tools',
+    'depends': ['base'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/document_file_views.xml',
+        'views/templates.xml',
+    ],
+    'assets': {
+        'web.assets_backend': [
+            'your_module_name/static/src/js/document_viewer.js',
+            'your_module_name/static/src/css/document_viewer.css',
+        ],
+    },
+    'installable': True,
+    'application': True,
+}
+```
+
+Avec ces modifications, vous aurez ajouté une troisième section à votre module de gestion de documents pour afficher un visualiseur intégré. Vous pouvez ajuster le code selon vos besoins spécifiques pour assurer une intégration parfaite avec votre module existant. Assurez-vous également de tester ces fonctionnalités pour vérifier leur bon fonctionnement.
+
+D'accord, je comprends maintenant. Vous faites référence à la section de l'interface où les documents sélectionnés peuvent être visualisés et où plusieurs options sont disponibles pour interagir avec le document, comme "Envoyer un message", "Enregistrer une note", "Planifier une activité", etc. Voici comment reproduire cette section avec ces fonctionnalités dans un module personnalisé Odoo.
+
+### Étape 1 : Ajouter les dépendances nécessaires
+
+Assurez-vous que votre module dépend des modules nécessaires, notamment `mail` pour les activités et les messages.
+
+```python
+{
+    'name': 'Your Module Name',
+    'version': '16.0.1.0.0',
+    'depends': ['base', 'mail', 'document'],
+    'data': [
+        'views/your_model_views.xml',
+    ],
+    'installable': True,
+    'application': True,
+}
+```
+
+### Étape 2 : Créer un modèle pour les documents
+
+Créez un modèle pour gérer les documents avec les fonctionnalités nécessaires.
+
+#### Exemple de fichier `models/your_document_model.py`
+
+```python
+from odoo import models, fields
+
+class YourDocumentModel(models.Model):
+    _name = 'your.document.model'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
+
+    name = fields.Char(string='Name')
+    document = fields.Binary(string='Document')
+    description = fields.Text(string='Description')
+    # Autres champs de votre modèle
+```
+
+### Étape 3 : Ajouter les vues
+
+Créez une vue formulaire et une vue kanban pour afficher et interagir avec les documents.
+
+#### Exemple de fichier `views/your_model_views.xml`
+
+```xml
+<odoo>
+    <!-- Vue formulaire -->
+    <record id="view_your_document_form" model="ir.ui.view">
+        <field name="name">your.document.form</field>
+        <field name="model">your.document.model</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="document" widget="binary"/>
+                        <field name="description"/>
+                        <!-- ... autres champs ... -->
+                    </group>
+
+                    <!-- Champ pour les activités planifiées -->
+                    <div class="oe_chatter">
+                        <field name="message_ids" widget="mail_thread"/>
+                        <field name="activity_ids" widget="mail_activity"/>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Vue kanban -->
+    <record id="view_your_document_kanban" model="ir.ui.view">
+        <field name="name">your.document.kanban</field>
+        <field name="model">your.document.model</field>
+        <field name="arch" type="xml">
+            <kanban>
+                <field name="name"/>
+                <field name="document"/>
+                <field name="description"/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="oe_kanban_global_click">
+                            <div class="o_kanban_image">
+                                <img t-if="record.document.raw_value" t-att-src="kanban_image('your.document.model', 'document', record.id)" class="img-thumbnail"/>
+                            </div>
+                            <strong><field name="name"/></strong>
+                            <div><field name="description"/></div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_your_document" model="ir.actions.act_window">
+        <field name="name">Documents</field>
+        <field name="res_model">your.document.model</field>
+        <field name="view_mode">kanban,form</field>
+        <field name="view_id" ref="view_your_document_kanban"/>
+        <field name="help" type="html">
+            <p class="oe_view_nocontent_create">
+                Click to create a new document.
+            </p>
+        </field>
+    </record>
+
+    <!-- Menuitem -->
+    <menuitem id="menu_your_documents" name="Documents" sequence="10"/>
+    <menuitem id="menu_your_documents_documents" name="Your Documents" parent="menu_your_documents" action="action_your_document"/>
+</odoo>
+```
+
+### Étape 4 : Hériter et ajouter des activités dans votre modèle
+
+Assurez-vous que votre modèle hérite de `mail.thread` et `mail.activity.mixin` pour prendre en charge les messages et les activités planifiées.
+
+### Étape 5 : Mettre à jour et tester le module
+
+Mettez à jour votre module en utilisant la commande suivante :
+
+```bash
+$ odoo -u your_module_name
+```
+
+Ensuite, testez votre module pour vérifier que la section "Planifier une activité", "Envoyer un message", et "Enregistrer une note" apparaît correctement et permet de créer des activités et des messages.
+
+En suivant ces étapes, vous devriez pouvoir reproduire la fonctionnalité de visualisation et d'interaction avec les documents dans votre module Odoo.
