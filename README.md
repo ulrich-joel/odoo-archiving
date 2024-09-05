@@ -1058,3 +1058,26 @@ $ odoo -u your_module_name
 Ensuite, testez votre module pour vérifier que la section "Planifier une activité", "Envoyer un message", et "Enregistrer une note" apparaît correctement et permet de créer des activités et des messages.
 
 En suivant ces étapes, vous devriez pouvoir reproduire la fonctionnalité de visualisation et d'interaction avec les documents dans votre module Odoo.
+
+  Bonjour,
+
+ sa-help@microsoft.com [undefined:undefined]
+
+Je m'appelle Atchiengang Ngueyep Ulrich Joel, étudiant ambassadeur Microsoft, ingénieur d'étude chez Afreetech Cameroon et étudiant en Master 2 en recherche sur la détection d'anomalies basée sur l'intelligence artificielle au laboratoire informatique de l'Université de Yaoundé 1.
+
+Le 17 janvier 2024, j'ai reçu un email de votre part confirmant mon acceptation au programme Microsoft Learn Student Ambassadors. Malheureusement, j'ai rencontré un problème grave peu de temps après. J'ai été victime d'une agression au cours de laquelle j'ai perdu mes appareils personnels. Cet incident m'a empêché d'accéder à mes comptes et de participer activement au programme pendant plusieurs mois.
+
+Récemment, après m'être rétabli et avoir acquis un nouvel appareil, j'ai réussi à me reconnecter à mes comptes et à accéder à mes cours sur Microsoft Learn. Cependant, cet accès n'a duré qu'une journée ou une semaine, et depuis lors, je ne parviens plus à me connecter.
+
+Je vous serais reconnaissant si vous pouviez m'aider à résoudre ce problème d'accès afin que je puisse reprendre ma participation au programme et profiter pleinement des ressources disponibles.
+
+Je reste à votre disposition pour toute information supplémentaire.
+
+Merci d'avance pour votre aide.
+
+Cordialement,
+Atchiengang Ngueyep Ulrich Joel
+Email : ngueyep.joelulrich@Outlook.com
+                ulrichJoel.Atchiengangngueyep@studentambassadors.com
+
+ 
